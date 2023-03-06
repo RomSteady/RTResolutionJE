@@ -1,5 +1,5 @@
-﻿RTResolution 0.4.2 (Journey's End Edition)
-Copyright © 2017-2020 Michael Russell.  All Rights Reserved.
+﻿RTResolution 0.4.3 (Journey's End Edition)
+Copyright © 2017-2023 Michael Russell.  All Rights Reserved.
 
 This software is only to be used with legal copies of Terraria.
 
@@ -15,9 +15,9 @@ Unzip somewhere OTHER than the same folder that Terraria is installed to.
 
 Terraria © 2011 Relogic.  All Rights Reserved.
 
-This version of the software has been tested using Terraria 1.4.0.5 on a 4K monitor.
+This version of the software has been tested using Terraria 1.4.4.9 on a 4K monitor.
 
-This version of the software requires .NET Framework 4.7.2 be installed.
+This version of the software requires .NET Framework 4.8.0 be installed.
 
 To use:
 

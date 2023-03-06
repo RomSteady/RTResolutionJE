@@ -338,3 +338,6 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/MigrationBackup/95d22d90/RTResolutionJE/RTResolutionJE.csproj
+/MigrationBackup/95d22d90/RTResolutionJE/packages.config
+/MigrationBackup/95d22d90/RTResolutionJE/NuGetUpgradeLog.html
