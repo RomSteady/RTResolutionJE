@@ -385,7 +385,7 @@ namespace RTResolutionJE
                 var processor = scene.Body.GetILProcessor();
                 foreach (var instruction in instructionsToPatch)
                 {
-                    var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, scene.Module.Import(recthook));
+                    var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, scene.Module.ImportReference(recthook));
                     processor.InsertBefore(instruction, newInstruction);
                 }
             }
@@ -402,7 +402,7 @@ namespace RTResolutionJE
 
                 var processor = constructor.Body.GetILProcessor();
 
-                var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, constructor.Module.Import(errorHook));
+                var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, constructor.Module.ImportReference(errorHook));
                 processor.InsertBefore(constructor.Body.Instructions[0], newInstruction);
                 processor.InsertBefore(newInstruction, processor.Create(OpCodes.Nop));
                 processor.InsertAfter(newInstruction, processor.Create(OpCodes.Nop));
@@ -442,8 +442,8 @@ namespace RTResolutionJE
 
                     Program.MakeLargeAddressAware(outputProgramFile);
 
-                    System.Diagnostics.Process.Start(Program.GamePath);
-                    System.Diagnostics.Process.Start(saveGameFolder);
+                    Process.Start(Program.GamePath);
+                    Process.Start(saveGameFolder);
                     MessageBox.Show(
                         "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile + 
                         "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.");
