@@ -1,1 +1,1 @@
-tar -a -c -f RTResolution.zip RTResolutionJE.exe RTRHooks.dll Mono.*.dll
+tar -a -c -f RTResolution.zip *.exe *.dll *.txt
