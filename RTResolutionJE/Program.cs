@@ -15,7 +15,7 @@ namespace RTResolutionJE
     static class Program
     {
         private static string GamePath = "";
-        private static List<string> FindDetails = new List<string>();
+        private static readonly List<string> FindDetails = new List<string>();
         private static MemoryStream reachprofilestream;
         private static AssemblyDefinition terraria;
         private static AssemblyDefinition rtrhooks;
@@ -91,9 +91,11 @@ namespace RTResolutionJE
             }
             if (string.IsNullOrWhiteSpace(Program.GamePath))
             {
-                FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-                folderBrowserDialog.ShowNewFolderButton = false;
-                folderBrowserDialog.Description = "RTResolution couldn't automatically find your Terraria folder.  Please select your Terraria folder.";
+                FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog
+                {
+                    ShowNewFolderButton = false,
+                    Description = "RTResolution couldn't automatically find your Terraria folder.  Please select your Terraria folder."
+                };
                 if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
                 {
                     string selectedPath = folderBrowserDialog.SelectedPath;
@@ -230,7 +232,7 @@ namespace RTResolutionJE
             throw new KeyNotFoundException(string.Format("Default value not found for '{0}'.", (object)fieldName));
         }
 
-        private static string AlreadyPatchedFieldName = "___alreadyPatchedByRTR___";
+        private static readonly string AlreadyPatchedFieldName = "___alreadyPatchedByRTR___";
         private static bool IsAlreadyPatched()
         {
             try
@@ -390,25 +392,6 @@ namespace RTResolutionJE
                 }
             }
         }
-
-        private static void EnableErrorReporting()
-        {
-            var constructor  = FindMethodInAssembly(Program.terraria,
-                "System.Void Terraria.Program::SetupLogging()");
-            if (constructor != null)
-            {
-                var errorHook = FindMethodInAssembly(rtrhooks,
-                    "System.Void RTRHooks.ErrorHandler::Setup()");
-
-                var processor = constructor.Body.GetILProcessor();
-
-                var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, constructor.Module.ImportReference(errorHook));
-                processor.InsertBefore(constructor.Body.Instructions[0], newInstruction);
-                processor.InsertBefore(newInstruction, processor.Create(OpCodes.Nop));
-                processor.InsertAfter(newInstruction, processor.Create(OpCodes.Nop));
-            }
-        }
-
 
         [STAThread]
         private static void Main()
