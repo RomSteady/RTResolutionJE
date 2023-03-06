@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 namespace RTResolutionJE
 {
-    static class Program
+    internal static class Program
     {
         private static string GamePath = "";
         private static readonly List<string> FindDetails = new List<string>();
@@ -31,9 +31,13 @@ namespace RTResolutionJE
             foreach (Process process in processes)
             {
                 if (regex.IsMatch(process.ProcessName))
+                {
                     processList.Add(process);
+                }
                 else
+                {
                     process.Dispose();
+                }
             }
             return processList;
         }
@@ -41,7 +45,7 @@ namespace RTResolutionJE
         private static bool FindGame()
         {
 
-            List<Process> processesByName = Program.GetProcessesByName(".", "steam", RegexOptions.IgnoreCase);
+            List<Process> processesByName = GetProcessesByName(".", "steam", RegexOptions.IgnoreCase);
             string path1 = string.Empty;
             foreach (Process process in processesByName)
             {
@@ -49,22 +53,22 @@ namespace RTResolutionJE
                 {
                     if (process.MainModule.ModuleName.ToLower() == "steam.exe")
                     {
-                        Program.FindDetails.Add("Steam.exe process found.");
+                        FindDetails.Add("Steam.exe process found.");
                         FileInfo fileInfo = new FileInfo(process.MainModule.FileName);
                         path1 = fileInfo.DirectoryName;
                         DirectoryInfo[] directories1 = fileInfo.Directory.GetDirectories("steamapps");
                         if (directories1.Count() > 0)
                         {
-                            Program.FindDetails.Add("Steamapps folder found.");
+                            FindDetails.Add("Steamapps folder found.");
                             DirectoryInfo[] directories2 = directories1[0].GetDirectories("common");
                             if (directories2.Count() > 0)
                             {
-                                Program.FindDetails.Add("Common folder found.");
+                                FindDetails.Add("Common folder found.");
                                 DirectoryInfo[] directories3 = directories2[0].GetDirectories("terraria");
                                 if (directories3.Count() > 0)
                                 {
-                                    Program.FindDetails.Add("Terraria folder found.");
-                                    Program.GamePath = directories3[0].FullName;
+                                    FindDetails.Add("Terraria folder found.");
+                                    GamePath = directories3[0].FullName;
                                     return true;
                                 }
                             }
@@ -76,20 +80,22 @@ namespace RTResolutionJE
                     // Ignoring
                 }
             }
-            if (Program.FindDetails.Count == 0)
-                Program.FindDetails.Add("Could not find a process named Steam.exe running.");
+            if (FindDetails.Count == 0)
+            {
+                FindDetails.Add("Could not find a process named Steam.exe running.");
+            }
             else if (!string.IsNullOrWhiteSpace(path1))
             {
                 string steamConfig = Path.Combine(path1, "config/config.vdf");
-                Program.FindDetails.Add(string.Format("Checking Steam config at {0}", (object)steamConfig));
-                Program.GamePath = Program.ParseConfig(steamConfig, "InstallConfigStore/Software/Valve/Steam/apps/105600/installdir");
+                FindDetails.Add(string.Format("Checking Steam config at {0}", steamConfig));
+                GamePath = ParseConfig(steamConfig, "InstallConfigStore/Software/Valve/Steam/apps/105600/installdir");
             }
-            if (string.IsNullOrWhiteSpace(Program.GamePath))
+            if (string.IsNullOrWhiteSpace(GamePath))
             {
-                Program.FindDetails.Add("Steam version not found.  Checking registry for location of GOG.com version.");
-                Program.GamePath = Convert.ToString(Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\re-logic\\terraria", "install_path", (object)""));
+                FindDetails.Add("Steam version not found.  Checking registry for location of GOG.com version.");
+                GamePath = Convert.ToString(Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\re-logic\\terraria", "install_path", ""));
             }
-            if (string.IsNullOrWhiteSpace(Program.GamePath))
+            if (string.IsNullOrWhiteSpace(GamePath))
             {
                 FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog
                 {
@@ -100,12 +106,16 @@ namespace RTResolutionJE
                 {
                     string selectedPath = folderBrowserDialog.SelectedPath;
                     if (File.Exists(Path.Combine(selectedPath, "Terraria.exe")))
-                        Program.GamePath = selectedPath;
+                    {
+                        GamePath = selectedPath;
+                    }
                     else
-                        Program.FindDetails.Add(string.Format("Terraria.exe not found in " + selectedPath));
+                    {
+                        FindDetails.Add(string.Format("Terraria.exe not found in " + selectedPath));
+                    }
                 }
             }
-            return !string.IsNullOrWhiteSpace(Program.GamePath);
+            return !string.IsNullOrWhiteSpace(GamePath);
         }
 
         private static string ParseConfig(string steamConfig, string configNode)
@@ -118,19 +128,25 @@ namespace RTResolutionJE
                 {
                     string str2 = streamReader.ReadLine().Trim();
                     if (str2.StartsWith("{"))
+                    {
                         stringStack.Push(str1);
+                    }
                     else if (str2.StartsWith("}"))
-                        stringStack.Pop();
+                    {
+                        _ = stringStack.Pop();
+                    }
                     else if (str2.StartsWith("\""))
                     {
-                        string[] array = ((IEnumerable<string>)str2.Split('\t')).Where<string>((Func<string, bool>)(a => !string.IsNullOrWhiteSpace(a))).ToArray<string>();
+                        string[] array = str2.Split('\t').Where<string>(a => !string.IsNullOrWhiteSpace(a)).ToArray<string>();
                         str1 = array[0].Trim('"');
-                        if (array.Length > 1 && (string.Join("/", ((IEnumerable<string>)stringStack.ToArray()).Reverse<string>()) + "/" + str1).Equals(configNode, StringComparison.InvariantCultureIgnoreCase))
+                        if (array.Length > 1 && (string.Join("/", stringStack.ToArray().Reverse<string>()) + "/" + str1).Equals(configNode, StringComparison.InvariantCultureIgnoreCase))
+                        {
                             return array[1].Trim('"').Replace("\\\\", "\\");
+                        }
                     }
                 }
             }
-            return (string)null;
+            return null;
         }
 
         private static string SaveGameFolder()
@@ -142,22 +158,31 @@ namespace RTResolutionJE
         {
             using (FileStream fileStream = File.Open(file, FileMode.Open, FileAccess.ReadWrite))
             {
-                BinaryReader binaryReader = new BinaryReader((Stream)fileStream);
-                BinaryWriter binaryWriter = new BinaryWriter((Stream)fileStream);
-                if (binaryReader.ReadInt16() != (short)23117)
+                BinaryReader binaryReader = new BinaryReader(fileStream);
+                BinaryWriter binaryWriter = new BinaryWriter(fileStream);
+                if (binaryReader.ReadInt16() != 23117)
+                {
                     return;
+                }
+
                 binaryReader.BaseStream.Position = 60L;
                 int num1 = binaryReader.ReadInt32();
-                binaryReader.BaseStream.Position = (long)num1;
+                binaryReader.BaseStream.Position = num1;
                 if (binaryReader.ReadInt32() != 17744)
+                {
                     return;
+                }
+
                 binaryReader.BaseStream.Position += 18L;
                 long position = binaryReader.BaseStream.Position;
                 short num2 = binaryReader.ReadInt16();
-                if (((int)num2 & 32) == 32)
+                if ((num2 & 32) == 32)
+                {
                     return;
+                }
+
                 short num3 = (short)((int)num2 | 32);
-                binaryWriter.Seek((int)position, SeekOrigin.Begin);
+                _ = binaryWriter.Seek((int)position, SeekOrigin.Begin);
                 binaryWriter.Write(num3);
                 binaryWriter.Flush();
             }
@@ -170,10 +195,12 @@ namespace RTResolutionJE
                 foreach (TypeDefinition type in module.Types)
                 {
                     if (type.FullName == className)
+                    {
                         return type;
+                    }
                 }
             }
-            throw new KeyNotFoundException(String.Format("Class '{0}' not found.", className));
+            throw new KeyNotFoundException(string.Format("Class '{0}' not found.", className));
         }
 
         public static MethodDefinition FindMethodInAssembly(
@@ -187,11 +214,13 @@ namespace RTResolutionJE
                     foreach (MethodDefinition method in type.Methods)
                     {
                         if (method.FullName == methodName)
+                        {
                             return method;
+                        }
                     }
                 }
             }
-            throw new KeyNotFoundException(String.Format("Method '{0}' not found.", methodName));
+            throw new KeyNotFoundException(string.Format("Method '{0}' not found.", methodName));
         }
 
         public static FieldDefinition FindFieldInAssembly(
@@ -205,11 +234,13 @@ namespace RTResolutionJE
                     foreach (FieldDefinition field in type.Fields)
                     {
                         if (field.FullName.EndsWith(fieldName))
+                        {
                             return field;
+                        }
                     }
                 }
             }
-            throw new KeyNotFoundException(String.Format("Field '{0}' not found.", fieldName));
+            throw new KeyNotFoundException(string.Format("Field '{0}' not found.", fieldName));
         }
 
         public static void ChangeDefaultInt32Value(
@@ -224,12 +255,12 @@ namespace RTResolutionJE
                     Instruction previous = instruction.Previous;
                     if (previous.OpCode == OpCodes.Ldc_I4)
                     {
-                        previous.Operand = (object)newValue;
+                        previous.Operand = newValue;
                         return;
                     }
                 }
             }
-            throw new KeyNotFoundException(string.Format("Default value not found for '{0}'.", (object)fieldName));
+            throw new KeyNotFoundException(string.Format("Default value not found for '{0}'.", fieldName));
         }
 
         private static readonly string AlreadyPatchedFieldName = "___alreadyPatchedByRTR___";
@@ -237,7 +268,7 @@ namespace RTResolutionJE
         {
             try
             {
-                var patched = FindFieldInAssembly(Program.terraria, AlreadyPatchedFieldName);
+                FieldDefinition patched = FindFieldInAssembly(terraria, AlreadyPatchedFieldName);
                 return true;
             }
             catch
@@ -248,130 +279,130 @@ namespace RTResolutionJE
 
         private static void EnableHighResolution()
         {
-            var minZoomX = FindFieldInAssembly(Program.terraria, "Terraria.Main::MinimumZoomComparerX");
-            var minZoomY = FindFieldInAssembly(Program.terraria, "Terraria.Main::MinimumZoomComparerY");
+            FieldDefinition minZoomX = FindFieldInAssembly(terraria, "Terraria.Main::MinimumZoomComparerX");
+            FieldDefinition minZoomY = FindFieldInAssembly(terraria, "Terraria.Main::MinimumZoomComparerY");
 
-            var terrariaMain = FindTypeInAssembly(Program.terraria, "Terraria.Main");
+            TypeDefinition terrariaMain = FindTypeInAssembly(terraria, "Terraria.Main");
             terrariaMain.Fields.Add(new FieldDefinition(AlreadyPatchedFieldName, FieldAttributes.Private, minZoomX.FieldType));
 
 
-            foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
+            foreach (Instruction instruction in
+                FindMethodInAssembly(terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
+                    FieldDefinition currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (currInst.FullName.EndsWith("Terraria.Main::MinimumZoomComparerX") ||
                         currInst.FullName.EndsWith("Terraria.Main::MinimumZoomComparerY")
                     )
                     {
-                        var instToPatch = instruction.Previous;
+                        Instruction instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object)8192.0f;
+                            instToPatch.Operand = 8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object)8192;
+                            instToPatch.Operand = 8192;
                         }
                     }
                 }
             }
 
-            foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::CacheSupportedDisplaySizes()").Body
+            foreach (Instruction instruction in
+                FindMethodInAssembly(terraria, "System.Void Terraria.Main::CacheSupportedDisplaySizes()").Body
                 .Instructions)
             {
                 if (instruction.OpCode == OpCodes.Ldsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
+                    FieldDefinition currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
                     {
-                        instruction.Operand = (object)minZoomX;
+                        instruction.Operand = minZoomX;
                     }
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenH"))
                     {
-                        instruction.Operand = (object)minZoomY;
+                        instruction.Operand = minZoomY;
                     }
                 }
             }
 
-            foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Graphics.Light.LightMap::.ctor()").Body
+            foreach (Instruction instruction in
+                FindMethodInAssembly(terraria, "System.Void Terraria.Graphics.Light.LightMap::.ctor()").Body
                 .Instructions)
             {
                 if (instruction.OpCode == OpCodes.Ldc_I4)
                 {
-                    int val = (int) instruction.Operand;
+                    int val = (int)instruction.Operand;
                     if (val == 203) // Width, height
                     {
                         val *= 2;
-                    } 
+                    }
                     else if (val == 41209) // Size of array
                     {
                         val *= 4;
                     }
 
-                    instruction.Operand = (object) val;
+                    instruction.Operand = val;
                 }
             }
 
-            foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::SetGraphicsProfileInternal()").Body
+            foreach (Instruction instruction in
+                FindMethodInAssembly(terraria, "System.Void Terraria.Main::SetGraphicsProfileInternal()").Body
                 .Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
+                    FieldDefinition currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
                     {
-                        var instToPatch = instruction.Previous;
+                        Instruction instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = 8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = 8192;
                         }
                     }
 
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenH"))
                     {
-                        var instToPatch = instruction.Previous;
+                        Instruction instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = 8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = 8192;
                         }
                     }
 
                     if (currInst.FullName.EndsWith("Terraria.Main::_renderTargetMaxSize"))
                     {
-                        var instToPatch = instruction.Previous;
+                        Instruction instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0;
+                            instToPatch.Operand = 8192.0;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = 8192;
                         }
                     }
                 }
             }
 
             // Biome fix for 1.4
-            var scene = FindMethodInAssembly(Program.terraria,
+            MethodDefinition scene = FindMethodInAssembly(terraria,
                 "System.Void Terraria.SceneMetrics::ScanAndExportToMain(Terraria.SceneMetricsScanSettings)");
             if (scene != null)
             {
-                var recthook = FindMethodInAssembly(rtrhooks,
+                MethodDefinition recthook = FindMethodInAssembly(rtrhooks,
                     "Microsoft.Xna.Framework.Rectangle RTRHooks.Xna::ShrinkRectangle(Microsoft.Xna.Framework.Rectangle)");
-                var instructionsToPatch = new List<Instruction>();
+                List<Instruction> instructionsToPatch = new List<Instruction>();
                 foreach (Instruction instruction in scene.Body.Instructions)
                 {
                     if (instruction.OpCode == OpCodes.Call)
@@ -382,12 +413,12 @@ namespace RTResolutionJE
                             instructionsToPatch.Add(instruction);
                         }
                     }
-                    
+
                 }
-                var processor = scene.Body.GetILProcessor();
-                foreach (var instruction in instructionsToPatch)
+                ILProcessor processor = scene.Body.GetILProcessor();
+                foreach (Instruction instruction in instructionsToPatch)
                 {
-                    var newInstruction = processor.Create(Mono.Cecil.Cil.OpCodes.Call, scene.Module.ImportReference(recthook));
+                    Instruction newInstruction = processor.Create(OpCodes.Call, scene.Module.ImportReference(recthook));
                     processor.InsertBefore(instruction, newInstruction);
                 }
             }
@@ -396,46 +427,44 @@ namespace RTResolutionJE
         [STAThread]
         private static void Main()
         {
-            if (!Program.FindGame())
+            if (!FindGame())
             {
-                Program.FindDetails.Insert(0, "Unable to find Terraria.\n\nIf the Steam version, make sure Steam is running.\n\nIf the GOG version, make sure you've run it once.\n\nDetails:");
-                MessageBox.Show(String.Join("\n", Program.FindDetails.ToArray()));
+                FindDetails.Insert(0, "Unable to find Terraria.\n\nIf the Steam version, make sure Steam is running.\n\nIf the GOG version, make sure you've run it once.\n\nDetails:");
+                _ = MessageBox.Show(string.Join("\n", FindDetails.ToArray()));
             }
             else
             {
-                string saveGameFolder = Program.SaveGameFolder();
-                string fileName = String.Format("{0}\\Terraria.exe", Program.GamePath);
-                string outputProgramFile = String.Format("{0}\\Terraria.exe", saveGameFolder);
-                Program.terraria = AssemblyDefinition.ReadAssembly(fileName);
-                Program.rtrhooks = AssemblyDefinition.ReadAssembly(@".\RTRHooks.dll");
-                if (!Program.IsAlreadyPatched())
+                string saveGameFolder = SaveGameFolder();
+                string fileName = string.Format("{0}\\Terraria.exe", GamePath);
+                string outputProgramFile = string.Format("{0}\\Terraria.exe", saveGameFolder);
+                terraria = AssemblyDefinition.ReadAssembly(fileName);
+                rtrhooks = AssemblyDefinition.ReadAssembly(@".\RTRHooks.dll");
+                if (!IsAlreadyPatched())
                 {
-                    Program.EnableHighResolution();
-                    //Program.EnableErrorReporting();
+                    EnableHighResolution();
 
                     terraria.MainModule.Resources.Add(new EmbeddedResource("Terraria.Libraries.RTRHooks.dll", ManifestResourceAttributes.Public, File.OpenRead(@".\RTRHooks.dll")));
 
-
-                    Program.terraria.Write(outputProgramFile);
-                    if (Program.reachprofilestream != null)
+                    terraria.Write(outputProgramFile);
+                    if (reachprofilestream != null)
                     {
-                        Program.reachprofilestream.Close();
-                        Program.reachprofilestream = (MemoryStream) null;
+                        reachprofilestream.Close();
+                        reachprofilestream = null;
                     }
 
-                    Program.MakeLargeAddressAware(outputProgramFile);
+                    MakeLargeAddressAware(outputProgramFile);
 
-                    Process.Start(Program.GamePath);
-                    Process.Start(saveGameFolder);
-                    MessageBox.Show(
-                        "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile + 
+                    _ = Process.Start(GamePath);
+                    _ = Process.Start(saveGameFolder);
+                    _ = MessageBox.Show(
+                        "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile +
                         "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.");
                 }
                 else
                 {
-                    System.Diagnostics.Process.Start(Program.GamePath);
-                    MessageBox.Show(
-                        "The located version of Terraria.exe in your " + Program.GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.");
+                    _ = Process.Start(GamePath);
+                    _ = MessageBox.Show(
+                        "The located version of Terraria.exe in your " + GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.");
                 }
             }
         }
