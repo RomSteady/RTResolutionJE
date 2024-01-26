@@ -422,6 +422,25 @@ namespace RTResolutionJE
                     processor.InsertBefore(instruction, newInstruction);
                 }
             }
+
+            // Replace SpriteBatch with SpriteBatch2
+            MethodDefinition loadContent = FindMethodInAssembly(terraria,
+                "System.Void Terraria.Main::LoadContent()");
+            if (loadContent != null)
+            {
+                ILProcessor processor = loadContent.Body.GetILProcessor();
+                var spriteBatch2 = FindMethodInAssembly(rtrhooks, "System.Void RTRHooks.SpriteBatch2::.ctor(Microsoft.Xna.Framework.Graphics.GraphicsDevice)");
+                for (var inst = 0; inst < loadContent.Body.Instructions.Count; inst++)
+                {
+                    var instruction = loadContent.Body.Instructions[inst];
+                    if (instruction.OpCode == OpCodes.Newobj && instruction.Operand.ToString().Contains("SpriteBatch"))
+                    {
+                        Instruction newInstruction = processor.Create(OpCodes.Newobj,
+                            loadContent.Module.ImportReference(spriteBatch2));
+                        loadContent.Body.Instructions[inst] = newInstruction;
+                    }
+                }
+            }
         }
 
         [STAThread]

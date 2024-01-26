@@ -1,7 +1,9 @@
-﻿RTResolution 0.4.3 (Journey's End Edition)
-Copyright © 2017-2023 Michael Russell.  All Rights Reserved.
+﻿RTResolution 0.4.4 (XNA Performance Tuning Edition)
+Copyright © 2017-2024 Michael Russell.  All Rights Reserved.
 
 This software is only to be used with legal copies of Terraria.
+
+Unzip somewhere OTHER than the same folder that Terraria is installed to.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -11,7 +13,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-Unzip somewhere OTHER than the same folder that Terraria is installed to.
+Dedicated to Marley, who tried to be a good dog.
 
 Terraria © 2011 Relogic.  All Rights Reserved.
 
