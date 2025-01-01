@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build RTRHooks",
+            "command":"C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\MSBuild.exe",
+            "type":"shell",
+            "args":[
+                "RTRHooks/RTRHooks.csproj",
+                "/t:Build",
+                "/p:Configuration=Release",
+                "/p:Platform=\"x86\"",
+                "/p:OutputPath=\"${workspaceFolder}/output\""
+            ]
+        },
+        {
+            "label": "Build RTResolutionJE",
+            "command":"C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\MSBuild.exe",
+            "type":"shell",
+            "args":[
+                "RTResolutionJE/RTResolutionJE.csproj",
+                "/t:Build",
+                "/p:Configuration=Release",
+                "/p:Platform=\"x86\"",
+                "/p:OutputPath=\"${workspaceFolder}/output\""
+            ]
+        },
+        {
+            "label": "Build All",
+            "dependsOn": [
+                "Build RTRHooks",
+                "Build RTResolutionJE"
+            ]
+        }
+    ]
+}
