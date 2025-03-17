@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+         {
+             "name": "RTResolution",
+             "type":"clr",
+             "request": "launch",
+             "preLaunchTask": "Build All",
+             "program": "${workspaceFolder}/output/RTResolutionJE.exe",
+             "args":[],
+             "console": "internalConsole",
+             "stopAtEntry": false,
+             "internalConsoleOptions": "openOnSessionStart"
+         }
+     ,]
+ }
