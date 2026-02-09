@@ -1,4 +1,6 @@
-﻿using Microsoft.Win32;
+﻿#undef DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
+
+using Microsoft.Win32;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using System;
@@ -252,16 +254,14 @@ namespace RTResolutionJE
             var terrariaMain = FindTypeInAssembly(Program.terraria, "Terraria.Main");
             terrariaMain.Fields.Add(new FieldDefinition(AlreadyPatchedFieldName, FieldAttributes.Private, minZoomX.FieldType));
 
-            var processor = Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.GetILProcessor();
+            // First, we'll patch the instructions that cap the maximum resoution for Terraria.
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
                     var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
-                    if (/*currInst.FullName.EndsWith("Terraria.Main::MaxWorldViewSizeWidth") ||
-                        currInst.FullName.EndsWith("Terraria.Main::MaxWorldViewSizeHeight") ||*/
+                    if (
                         currInst.FullName.EndsWith("Terraria.Main::maxScreenW") ||
                         currInst.FullName.EndsWith("Terraria.Main::maxScreenH")
                     )
@@ -290,30 +290,13 @@ namespace RTResolutionJE
                         // Step back to previous load instructions
                         // Stepping back from newobj -> ldc_i4 -> ldc_i4 -> base
                         var baseInstruction = instruction.Previous;
-baseInstruction.Previous.Operand = (object)8192;
-baseInstruction.Previous.Previous.Operand = (object)8192;   
-                    }
-                }
-            }
-/*
-            foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::CacheSupportedDisplaySizes()").Body
-                .Instructions)
-            {
-                if (instruction.OpCode == OpCodes.Ldsfld)
-                {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
-                    if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
-                    {
-                        instruction.Operand = (object)minZoomX;
-                    }
-                    if (currInst.FullName.EndsWith("Terraria.Main::maxScreenH"))
-                    {
-                        instruction.Operand = (object)minZoomY;
+                        baseInstruction.Previous.Operand = (object)8192;
+                        baseInstruction.Previous.Previous.Operand = (object)8192;   
                     }
                 }
             }
 
+            // Next, we'll patch the lightmap constructor to increase the size of the lightmap arrays.
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Graphics.Light.LightMap::.ctor()").Body
                 .Instructions)
@@ -334,23 +317,24 @@ baseInstruction.Previous.Previous.Operand = (object)8192;
                 }
             }
 
+
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::SetGraphicsProfileInternal()").Body
                 .Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
+                    var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
                     {
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = (object)8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
 
@@ -359,11 +343,11 @@ baseInstruction.Previous.Previous.Operand = (object)8192;
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = (object)8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
 
@@ -372,16 +356,17 @@ baseInstruction.Previous.Previous.Operand = (object)8192;
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0;
+                            instToPatch.Operand = (object)8192.0;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
                 }
             }
 
+/*
             // Biome fix for 1.4
             var scene = FindMethodInAssembly(Program.terraria,
                 "System.Void Terraria.SceneMetrics::ScanAndExportToMain(Terraria.SceneMetricsScanSettings)");
@@ -444,8 +429,13 @@ baseInstruction.Previous.Previous.Operand = (object)8192;
                 else
                 {
                     string saveGameFolder = Program.SaveGameFolder();
-                    string fileName = String.Format("{0}\\Terraria.exe", Program.GamePath);
-                    string outputProgramFile = String.Format("{0}\\Terraria.exe", saveGameFolder);
+                    #if DEV
+                        string fileName = String.Format("{0}\\Terraria1.exe", Program.GamePath);
+                        string outputProgramFile = String.Format("{0}\\Terraria.exe", Program.GamePath);
+                    #else
+                        string fileName = String.Format("{0}\\Terraria.exe", Program.GamePath);
+                        string outputProgramFile = String.Format("{0}\\Terraria.exe", saveGameFolder);
+                    #endif
                     Program.terraria = AssemblyDefinition.ReadAssembly(fileName);
                     Program.rtrhooks = AssemblyDefinition.ReadAssembly(@".\RTRHooks.dll");
                     if (!Program.IsAlreadyPatched())
@@ -454,7 +444,8 @@ baseInstruction.Previous.Previous.Operand = (object)8192;
                         //Program.EnableErrorReporting();
 
                         terraria.MainModule.Resources.Add(new EmbeddedResource("Terraria.Libraries.RTRHooks.dll", ManifestResourceAttributes.Public, File.OpenRead(@".\RTRHooks.dll")));
-
+                        terraria.MainModule.Resources.Remove(terraria.MainModule.Resources.FirstOrDefault(r => r.Name == "Microsoft.Xna.Framework.RuntimeProfile"));
+                        terraria.MainModule.Resources.Add(new EmbeddedResource("Microsoft.Xna.Framework.RuntimeProfile", ManifestResourceAttributes.Public, File.OpenRead(@".\hidef-profile.txt")));
 
                         Program.terraria.Write(outputProgramFile);
                         if (Program.reachprofilestream != null)
