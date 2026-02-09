@@ -11,3 +11,7 @@ To Set Up:
 * Install the .NET 4.7.2 SDK
 * Download Nuget and drop it in the RTResolutionJE folder
 * Inside the RTResolutionJE folder, type `./nuget restore` to download the dependencies
+
+To Compile:
+
+* Inside Visual Studo Code, go to the Command Palette, select Run Task, then Build All
