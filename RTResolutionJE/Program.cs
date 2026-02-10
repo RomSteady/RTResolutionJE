@@ -1,4 +1,4 @@
-﻿#undef DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
+﻿#define DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
 
 using Microsoft.Win32;
 using Mono.Cecil;
@@ -263,7 +263,8 @@ namespace RTResolutionJE
                     var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (
                         currInst.FullName.EndsWith("Terraria.Main::maxScreenW") ||
-                        currInst.FullName.EndsWith("Terraria.Main::maxScreenH")
+                        currInst.FullName.EndsWith("Terraria.Main::maxScreenH") ||
+                        currInst.FullName.EndsWith("Terraria.Main::_renderTargetMaxSize")
                     )
                     {
                         var instToPatch = instruction.Previous;
