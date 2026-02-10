@@ -1,4 +1,6 @@
-﻿using Microsoft.Win32;
+﻿#define DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
+
+using Microsoft.Win32;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using System;
@@ -246,21 +248,23 @@ namespace RTResolutionJE
 
         private static void EnableHighResolution()
         {
-            var minZoomX = FindFieldInAssembly(Program.terraria, "Terraria.Main::MinimumZoomComparerX");
-            var minZoomY = FindFieldInAssembly(Program.terraria, "Terraria.Main::MinimumZoomComparerY");
+            var minZoomX = FindFieldInAssembly(Program.terraria, "Terraria.Main::MaxWorldViewSizeWidth");
+            var minZoomY = FindFieldInAssembly(Program.terraria, "Terraria.Main::MaxWorldViewSizeHeight");
 
             var terrariaMain = FindTypeInAssembly(Program.terraria, "Terraria.Main");
             terrariaMain.Fields.Add(new FieldDefinition(AlreadyPatchedFieldName, FieldAttributes.Private, minZoomX.FieldType));
 
-
+            // First, we'll patch the instructions that cap the maximum resoution for Terraria.
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
                     var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
-                    if (currInst.FullName.EndsWith("Terraria.Main::MinimumZoomComparerX") ||
-                        currInst.FullName.EndsWith("Terraria.Main::MinimumZoomComparerY")
+                    if (
+                        currInst.FullName.EndsWith("Terraria.Main::maxScreenW") ||
+                        currInst.FullName.EndsWith("Terraria.Main::maxScreenH") ||
+                        currInst.FullName.EndsWith("Terraria.Main::_renderTargetMaxSize")
                     )
                     {
                         var instToPatch = instruction.Previous;
@@ -277,23 +281,23 @@ namespace RTResolutionJE
             }
 
             foreach (Instruction instruction in Program
-                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::CacheSupportedDisplaySizes()").Body
-                .Instructions)
+                .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
             {
-                if (instruction.OpCode == OpCodes.Ldsfld)
+                if (instruction.OpCode == OpCodes.Stsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
-                    if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
+                    var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
+                    if (currInst.FullName.EndsWith("Terraria.Main::MaxWorldViewSize"))
                     {
-                        instruction.Operand = (object)minZoomX;
-                    }
-                    if (currInst.FullName.EndsWith("Terraria.Main::maxScreenH"))
-                    {
-                        instruction.Operand = (object)minZoomY;
+                        // Step back to previous load instructions
+                        // Stepping back from newobj -> ldc_i4 -> ldc_i4 -> base
+                        var baseInstruction = instruction.Previous;
+                        baseInstruction.Previous.Operand = (object)8192;
+                        baseInstruction.Previous.Previous.Operand = (object)8192;   
                     }
                 }
             }
 
+            // Next, we'll patch the lightmap constructor to increase the size of the lightmap arrays.
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Graphics.Light.LightMap::.ctor()").Body
                 .Instructions)
@@ -314,23 +318,24 @@ namespace RTResolutionJE
                 }
             }
 
+
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::SetGraphicsProfileInternal()").Body
                 .Instructions)
             {
                 if (instruction.OpCode == OpCodes.Stsfld)
                 {
-                    var currInst = (Mono.Cecil.FieldDefinition) instruction.Operand;
+                    var currInst = (Mono.Cecil.FieldDefinition)instruction.Operand;
                     if (currInst.FullName.EndsWith("Terraria.Main::maxScreenW"))
                     {
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = (object)8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
 
@@ -339,11 +344,11 @@ namespace RTResolutionJE
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0f;
+                            instToPatch.Operand = (object)8192.0f;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
 
@@ -352,16 +357,17 @@ namespace RTResolutionJE
                         var instToPatch = instruction.Previous;
                         if (instToPatch.OpCode == OpCodes.Ldc_R4)
                         {
-                            instToPatch.Operand = (object) 8192.0;
+                            instToPatch.Operand = (object)8192.0;
                         }
                         else if (instToPatch.OpCode == OpCodes.Ldc_I4)
                         {
-                            instToPatch.Operand = (object) 8192;
+                            instToPatch.Operand = (object)8192;
                         }
                     }
                 }
             }
 
+/*
             // Biome fix for 1.4
             var scene = FindMethodInAssembly(Program.terraria,
                 "System.Void Terraria.SceneMetrics::ScanAndExportToMain(Terraria.SceneMetricsScanSettings)");
@@ -389,6 +395,7 @@ namespace RTResolutionJE
                     processor.InsertBefore(instruction, newInstruction);
                 }
             }
+            */
         }
 
         private static void EnableErrorReporting()
@@ -413,47 +420,60 @@ namespace RTResolutionJE
         [STAThread]
         private static void Main()
         {
-            if (!Program.FindGame())
+            try
             {
-                Program.FindDetails.Insert(0, "Unable to find Terraria.\n\nIf the Steam version, make sure Steam is running.\n\nIf the GOG version, make sure you've run it once.\n\nDetails:");
-                MessageBox.Show(String.Join("\n", Program.FindDetails.ToArray()));
-            }
-            else
-            {
-                string saveGameFolder = Program.SaveGameFolder();
-                string fileName = String.Format("{0}\\Terraria.exe", Program.GamePath);
-                string outputProgramFile = String.Format("{0}\\Terraria.exe", saveGameFolder);
-                Program.terraria = AssemblyDefinition.ReadAssembly(fileName);
-                Program.rtrhooks = AssemblyDefinition.ReadAssembly(@".\RTRHooks.dll");
-                if (!Program.IsAlreadyPatched())
+                if (!Program.FindGame())
                 {
-                    Program.EnableHighResolution();
-                    //Program.EnableErrorReporting();
-
-                    terraria.MainModule.Resources.Add(new EmbeddedResource("Terraria.Libraries.RTRHooks.dll", ManifestResourceAttributes.Public, File.OpenRead(@".\RTRHooks.dll")));
-
-
-                    Program.terraria.Write(outputProgramFile);
-                    if (Program.reachprofilestream != null)
-                    {
-                        Program.reachprofilestream.Close();
-                        Program.reachprofilestream = (MemoryStream) null;
-                    }
-
-                    Program.MakeLargeAddressAware(outputProgramFile);
-
-                    System.Diagnostics.Process.Start(Program.GamePath);
-                    System.Diagnostics.Process.Start(saveGameFolder);
-                    MessageBox.Show(
-                        "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile + 
-                        "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.");
+                    Program.FindDetails.Insert(0, "Unable to find Terraria.\n\nIf the Steam version, make sure Steam is running.\n\nIf the GOG version, make sure you've run it once.\n\nDetails:");
+                    MessageBox.Show(String.Join("\n", Program.FindDetails.ToArray()));
                 }
                 else
                 {
-                    System.Diagnostics.Process.Start(Program.GamePath);
-                    MessageBox.Show(
-                        "The located version of Terraria.exe in your " + Program.GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.");
+                    string saveGameFolder = Program.SaveGameFolder();
+                    #if DEV
+                        string fileName = String.Format("{0}\\Terraria1.exe", Program.GamePath);
+                        string outputProgramFile = String.Format("{0}\\Terraria.exe", Program.GamePath);
+                    #else
+                        string fileName = String.Format("{0}\\Terraria.exe", Program.GamePath);
+                        string outputProgramFile = String.Format("{0}\\Terraria.exe", saveGameFolder);
+                    #endif
+                    Program.terraria = AssemblyDefinition.ReadAssembly(fileName);
+                    Program.rtrhooks = AssemblyDefinition.ReadAssembly(@".\RTRHooks.dll");
+                    if (!Program.IsAlreadyPatched())
+                    {
+                        Program.EnableHighResolution();
+                        //Program.EnableErrorReporting();
+
+                        terraria.MainModule.Resources.Add(new EmbeddedResource("Terraria.Libraries.RTRHooks.dll", ManifestResourceAttributes.Public, File.OpenRead(@".\RTRHooks.dll")));
+                        terraria.MainModule.Resources.Remove(terraria.MainModule.Resources.FirstOrDefault(r => r.Name == "Microsoft.Xna.Framework.RuntimeProfile"));
+                        terraria.MainModule.Resources.Add(new EmbeddedResource("Microsoft.Xna.Framework.RuntimeProfile", ManifestResourceAttributes.Public, File.OpenRead(@".\hidef-profile.txt")));
+
+                        Program.terraria.Write(outputProgramFile);
+                        if (Program.reachprofilestream != null)
+                        {
+                            Program.reachprofilestream.Close();
+                            Program.reachprofilestream = (MemoryStream)null;
+                        }
+
+                        Program.MakeLargeAddressAware(outputProgramFile);
+
+                        System.Diagnostics.Process.Start(Program.GamePath);
+                        System.Diagnostics.Process.Start(saveGameFolder);
+                        MessageBox.Show(
+                            "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile +
+                            "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Process.Start(Program.GamePath);
+                        MessageBox.Show(
+                            "The located version of Terraria.exe in your " + Program.GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.");
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred:\n\n" + ex.ToString());
             }
         }
     }
