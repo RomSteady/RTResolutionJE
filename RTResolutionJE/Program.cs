@@ -292,8 +292,18 @@ namespace RTResolutionJE
                         // Stepping back from newobj -> ldc_i4 -> ldc_i4 -> base
                         var baseInstruction = instruction.Previous;
                         baseInstruction.Previous.Operand = (object)8192;
-                        baseInstruction.Previous.Previous.Operand = (object)8192;   
+                        baseInstruction.Previous.Previous.Operand = (object)8192;
                     }
+
+                    if (currInst.FullName.EndsWith("Terraria.Main::_selectedGraphicsProfile"))
+                    {
+                        // We need to replace the previous instruction to force it to be HiDef instad of Reach
+                        var instToPatch = instruction.Previous;
+                        if (instToPatch.OpCode == OpCodes.Ldc_I4_0)
+                        {
+                            instToPatch.OpCode = OpCodes.Ldc_I4_1;
+                        }
+                    }                    
                 }
             }
 
