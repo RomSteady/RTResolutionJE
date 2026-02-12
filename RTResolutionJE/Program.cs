@@ -1,4 +1,4 @@
-﻿#define DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
+﻿#undef DEV // Define this to make the code drop the patched Terraria.exe in the install folder instead of the save game folder for easier debugging.  Don't forget to undefine this before building release versions.
 
 using Microsoft.Win32;
 using Mono.Cecil;
@@ -280,6 +280,17 @@ namespace RTResolutionJE
                 }
             }
 
+            // Force the map back on
+            var initTargets = Program.FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::InitTargets()");
+            var mapEnabledField = FindFieldInAssembly(Program.terraria, "Terraria.Main::mapEnabled");
+            var ilp = initTargets.Body.GetILProcessor();
+            var firstInstruction = ilp.Body.Instructions[0];
+            var inst0 = ilp.Create(OpCodes.Ldc_I4_1);
+            var inst1 = ilp.Create(OpCodes.Stsfld, mapEnabledField);
+            ilp.InsertBefore(firstInstruction, inst0);
+            ilp.InsertAfter(inst0, inst1);
+
+            // XNA patches
             foreach (Instruction instruction in Program
                 .FindMethodInAssembly(Program.terraria, "System.Void Terraria.Main::.cctor()").Body.Instructions)
             {
@@ -471,13 +482,15 @@ namespace RTResolutionJE
                         System.Diagnostics.Process.Start(saveGameFolder);
                         MessageBox.Show(
                             "A patched version of Terraria.exe has been dropped in your save game folder.\n\n" + outputProgramFile +
-                            "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.");
+                            "\n\nCopy the new version of Terraria.exe file into your Terraria install folder.",
+                            "RTResolution Patch Applied");
                     }
                     else
                     {
                         System.Diagnostics.Process.Start(Program.GamePath);
                         MessageBox.Show(
-                            "The located version of Terraria.exe in your " + Program.GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.");
+                            "The located version of Terraria.exe in your " + Program.GamePath + " folder is already patched by a previous version of RTResolution.  Please reset your installed version of Terraria to its default version.",
+                            "Already Patched");
                     }
                 }
             }
