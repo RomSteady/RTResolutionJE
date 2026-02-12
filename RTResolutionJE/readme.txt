@@ -15,7 +15,7 @@ Unzip somewhere OTHER than the same folder that Terraria is installed to.
 
 Terraria © 2011 Relogic.  All Rights Reserved.
 
-This version of the software has been tested using Terraria 1.4.5.4 on a 4K monitor.
+This version of the software has been tested using Terraria 1.4.5.5 on a 4K monitor.
 
 This version of the software requires .NET Framework 4.7.2 be installed.
 
